@@ -1,0 +1,18 @@
+#################
+# Project cruft #
+#################
+/target
+**/*.rs.bk
+
+######################
+# OS generated files #
+######################
+*.sw[mnpcod]
+.#*
+.DS_Store
+.DS_Store?
+.Spotlight-V100
+.Trashes
+._*
+Thumbs.db
+ehthumbs.db
