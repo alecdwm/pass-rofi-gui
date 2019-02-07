@@ -53,6 +53,14 @@ fn recurse_pass_store(
             .collect::<Result<Vec<&str>, _>>()?
             .join("/");
 
+        // ignore entries not ending in '.gpg'
+        if !entry.ends_with(".gpg") {
+            continue;
+        }
+
+        // remove '.gpg' suffix
+        let entry = entry.split_at(entry.len() - ".gpg".len()).0.to_owned();
+
         // push entry
         pass_entries.push(entry);
     }
@@ -104,6 +112,5 @@ fn main() {
 
     let output = rofi.wait_with_output().expect("failed to read stdout");
     dbg!(&String::from_utf8_lossy(&output.stdout).trim());
-    dbg!(&output.stdout);
     dbg!(&output.status);
 }
