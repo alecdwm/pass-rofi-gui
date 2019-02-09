@@ -13,6 +13,7 @@ fn main() {
     let rofi = rofi::Rofi::new();
     let result = rofi.select_entry(pass_entries);
 
+    dbg!(result.code);
     if let Some(entry) = result.entry {
         dbg!(pass::get_pass_entry(&entry));
     }
