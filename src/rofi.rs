@@ -20,10 +20,19 @@ impl Rofi {
         Rofi { child }
     }
 
-    pub fn select_entry(mut self, entries: Vec<String>) -> (String, process::ExitStatus) {
+    pub fn select_entry(mut self, entries: Vec<String>) -> EntryResult {
         self.write_entries(entries);
         let output = self.wait_with_output();
-        (String::from_utf8(output.stdout).expect("failed to read entry as utf8").trim().to_owned(), output.status)
+        EntryResult::new(
+            match String::from_utf8(output.stdout)
+                .expect("failed to read entry name as utf8")
+                .trim()
+            {
+                "" => None,
+                val => Some(val.to_owned()),
+            },
+            output.status.code(),
+        )
     }
 
     fn write_entries(&mut self, entries: Vec<String>) {
@@ -39,5 +48,16 @@ impl Rofi {
         self.child
             .wait_with_output()
             .expect("failed to read stdout")
+    }
+}
+
+pub struct EntryResult {
+    pub entry: Option<String>,
+    pub code: Option<i32>,
+}
+
+impl EntryResult {
+    pub fn new(entry: Option<String>, code: Option<i32>) -> EntryResult {
+        EntryResult { entry, code }
     }
 }

@@ -1,7 +1,25 @@
 use std::env;
 use std::error::Error;
 use std::fs;
+use std::io::Write;
 use std::path::Path;
+use std::process;
+
+pub fn get_pass_entry(entry_name: &str) -> String {
+    let output = process::Command::new("pass")
+        .args(&["show", entry_name])
+        .output()
+        .expect("failed to execute pass");
+
+    let exitCode = output.status.code();
+    match exitCode {
+        None => panic!("pass exit code was None not 0"),
+        Some(0) => (),
+        Some(val) => panic!(format!("pass exit code was {} not 0", val)),
+    }
+
+    String::from_utf8(output.stdout).expect("failed to read pass entry as utf8")
+}
 
 pub fn get_password_store_dir(custom_dir: Option<&str>) -> String {
     match custom_dir {
