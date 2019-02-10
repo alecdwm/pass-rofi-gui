@@ -1,7 +1,7 @@
 extern crate pass_rofi_gui;
 
 use pass_rofi_gui::rofi::{EntryCommand, EntryResultCode};
-use pass_rofi_gui::{cli, pass, rofi, xorg};
+use pass_rofi_gui::{cli, otp, pass, rofi, xorg};
 
 fn main() {
     let matches = cli::get_matches();
@@ -43,7 +43,17 @@ fn main() {
                         &entry.get_password().expect("no password found in entry"),
                     )
                     .expect("failed to focus window by window_id"),
-                    EntryCommand::AutofillOTP => unimplemented!(),
+                    EntryCommand::AutofillOTP => xorg::type_string_in_window(
+                        &xorg::get_window_id_by_user_select()
+                            .expect("failed to get window_id by user selection"),
+                        &otp::calculate_otp(
+                            &entry
+                                .get_value_with_key("otp_secret")
+                                .expect("no otp_secret found in entry"),
+                        )
+                        .expect("failed to calculate otp from secret"),
+                    )
+                    .expect("failed to focus window by window_id"),
                     EntryCommand::AutofillCustom => {
                         let window_id = xorg::get_window_id_by_user_select()
                             .expect("failed to get window_id by user selection");
@@ -75,7 +85,14 @@ fn main() {
                     EntryCommand::CopyPassword => xorg::copy_to_clipboard(
                         &entry.get_password().expect("no password found in entry"),
                     ),
-                    EntryCommand::CopyOTP => unimplemented!(),
+                    EntryCommand::CopyOTP => xorg::copy_to_clipboard(
+                        &otp::calculate_otp(
+                            &entry
+                                .get_value_with_key("otp_secret")
+                                .expect("no otp_secret found in entry"),
+                        )
+                        .expect("failed to calculate otp from secret"),
+                    ),
                     EntryCommand::OpenURLInBrowser => unimplemented!(),
                 },
                 EntryResultCode::Other(code) => {
