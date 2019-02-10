@@ -47,11 +47,12 @@ fn main() {
                     EntryCommand::AutofillCustom => {
                         let window_id = xorg::get_window_id_by_user_select()
                             .expect("failed to get window_id by user selection");
-                        let username_or_email = entry.get_value_with_key("username").unwrap_or(
-                            entry
-                                .get_value_with_key("email")
-                                .expect("no username nor email found in entry"),
-                        );
+                        let username_or_email =
+                            entry.get_value_with_key("username").unwrap_or_else(|| {
+                                entry
+                                    .get_value_with_key("email")
+                                    .expect("no username nor email found in entry")
+                            });
                         let password = entry.get_password().expect("no password found in entry");
 
                         xorg::type_string_in_window(&window_id, &username_or_email)

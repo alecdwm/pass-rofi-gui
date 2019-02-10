@@ -16,7 +16,7 @@ pub fn get_window_id_by_user_select() -> Result<String, String> {
 
     let fragment = line.trim_start_matches("xwininfo: Window id: ");
     let window_id = fragment
-        .split_at(fragment.find(" ").unwrap_or(fragment.len()))
+        .split_at(fragment.find(" ").unwrap_or_else(|| fragment.len()))
         .0;
 
     Ok(window_id.to_owned())
