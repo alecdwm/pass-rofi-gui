@@ -24,7 +24,9 @@ pub fn get_window_id_by_user_select() -> Result<String, String> {
 
 pub fn focus_window(window_id: &str) -> Result<(), String> {
     let status = process::Command::new("xdotool")
-        .args(&["windowfocus", "--sync", window_id])
+        .arg("windowfocus")
+        .arg("--sync")
+        .arg(window_id)
         .status()
         .expect("failed to exec xdotool");
 
@@ -39,13 +41,10 @@ pub fn focus_window(window_id: &str) -> Result<(), String> {
 
 pub fn type_key_in_window(window_id: &str, key: &str) -> Result<(), String> {
     let status = process::Command::new("xdotool")
-        .args(&[
-            "key",
-            "--window",
-            window_id,
-            "--clearmodifiers",
-            key,
-        ])
+        .arg("key")
+        .args(&["--window", window_id])
+        .arg("--clearmodifiers")
+        .arg(key)
         .status()
         .expect("failed to exec xdotool");
 
