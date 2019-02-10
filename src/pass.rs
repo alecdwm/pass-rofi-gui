@@ -56,6 +56,27 @@ impl PassEntry {
         }
         PassEntry { fields }
     }
+
+    pub fn get_password(&self) -> Option<String> {
+        self.fields.iter().find_map(|field| {
+            if let PassEntryField::Password(val) = field {
+                return Some(val.clone());
+            }
+            None
+        })
+    }
+
+    pub fn get_value_with_key(&self, key: &str) -> Option<String> {
+        self.fields.iter().find_map(|field| {
+            if let PassEntryField::KeyVal(field_key, val) = field {
+                if field_key == key {
+                    return Some(val.clone());
+                }
+                return None;
+            }
+            None
+        })
+    }
 }
 
 pub fn get_password_store_dir(custom_dir: Option<&str>) -> String {

@@ -1,6 +1,7 @@
 pub mod cli;
 pub mod pass;
 pub mod rofi;
+pub mod xorg;
 
 #[cfg(test)]
 mod tests {
