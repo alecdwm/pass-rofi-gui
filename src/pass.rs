@@ -1,11 +1,14 @@
+use crate::pinentry;
 use std::env;
 use std::error::Error;
 use std::fs;
+use std::io::Write;
 use std::path::Path;
 use std::process;
 
-pub fn get_pass_entry(entry_name: &str) -> PassEntry {
+fn get_pass_entry_without_pinentry(entry_name: &str) -> Result<PassEntry, &'static str> {
     let output = process::Command::new("pass")
+        .env("PASSWORD_STORE_GPG_OPTS", "--pinentry-mode loopback")
         .args(&["show", entry_name])
         .output()
         .expect("failed to execute pass");
@@ -13,11 +16,48 @@ pub fn get_pass_entry(entry_name: &str) -> PassEntry {
     let exit_code = output.status.code();
     match exit_code {
         None => panic!("pass exit code was None not 0"),
-        Some(0) => (),
+        Some(0) => Ok(PassEntry::from_output(output.stdout)),
+        Some(2) => Err("pinentry required"),
         Some(val) => panic!(format!("pass exit code was {} not 0", val)),
     }
+}
 
-    PassEntry::from_output(output.stdout)
+fn get_pass_entry_with_pinentry(entry_name: &str) -> PassEntry {
+    let passphrase = pinentry::rofi_get_passphrase().expect("failed to get passphrase via rofi");
+
+    let mut child = process::Command::new("pass")
+        .stdin(process::Stdio::piped())
+        .stdout(process::Stdio::piped())
+        .env(
+            "PASSWORD_STORE_GPG_OPTS",
+            "--pinentry-mode loopback --passphrase-fd=0",
+        )
+        .args(&["show", entry_name])
+        .spawn()
+        .expect("failed to spawn pass");
+
+    let stdin = child.stdin.as_mut().expect("failed to open pass stdin");
+    stdin
+        .write_all(format!("{}\n", passphrase).as_bytes())
+        .expect("failed to write to pass stdin");
+
+    let output = child
+        .wait_with_output()
+        .expect("failed to read pass stdout");
+
+    let exit_code = output.status.code();
+    match exit_code {
+        None => panic!("pass exit code was None not 0"),
+        Some(0) => PassEntry::from_output(output.stdout),
+        Some(val) => panic!(format!("pass exit code was {} not 0", val)),
+    }
+}
+
+pub fn get_pass_entry(entry_name: &str) -> PassEntry {
+    match get_pass_entry_without_pinentry(entry_name) {
+        Ok(val) => val,
+        Err(_) => get_pass_entry_with_pinentry(entry_name),
+    }
 }
 
 #[derive(Debug)]

@@ -1,6 +1,7 @@
 pub mod cli;
 pub mod otp;
 pub mod pass;
+pub mod pinentry;
 pub mod rofi;
 pub mod xorg;
 
