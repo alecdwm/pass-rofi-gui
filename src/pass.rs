@@ -1,24 +1,61 @@
 use std::env;
 use std::error::Error;
 use std::fs;
-use std::io::Write;
 use std::path::Path;
 use std::process;
 
-pub fn get_pass_entry(entry_name: &str) -> String {
+pub fn get_pass_entry(entry_name: &str) -> PassEntry {
     let output = process::Command::new("pass")
         .args(&["show", entry_name])
         .output()
         .expect("failed to execute pass");
 
-    let exitCode = output.status.code();
-    match exitCode {
+    let exit_code = output.status.code();
+    match exit_code {
         None => panic!("pass exit code was None not 0"),
         Some(0) => (),
         Some(val) => panic!(format!("pass exit code was {} not 0", val)),
     }
 
-    String::from_utf8(output.stdout).expect("failed to read pass entry as utf8")
+    PassEntry::from_output(output.stdout)
+}
+
+#[derive(Debug)]
+pub struct PassEntry {
+    fields: Vec<PassEntryField>,
+}
+
+#[derive(Debug)]
+pub enum PassEntryField {
+    Password(String),
+    KeyVal(String, String),
+    Other(String),
+}
+
+impl PassEntry {
+    pub fn from_output(stdout: Vec<u8>) -> PassEntry {
+        let entry_text = String::from_utf8(stdout).expect("failed to read pass entry as utf8");
+        let mut lines = entry_text.lines();
+        let mut fields = vec![PassEntryField::Password(
+            lines.next().unwrap_or("").to_owned(),
+        )];
+        for line in lines {
+            let split_point = match line.find(": ") {
+                Some(val) => val,
+                None => {
+                    fields.push(PassEntryField::Other(line.to_owned()));
+                    continue;
+                }
+            };
+
+            let split = line.split_at(split_point);
+            fields.push(PassEntryField::KeyVal(
+                split.0.to_owned(),
+                split.1.split_at(2).1.to_owned(),
+            ));
+        }
+        PassEntry { fields }
+    }
 }
 
 pub fn get_password_store_dir(custom_dir: Option<&str>) -> String {
