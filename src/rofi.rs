@@ -11,8 +11,9 @@ impl Rofi {
             .stdin(process::Stdio::piped())
             .stdout(process::Stdio::piped())
             .args(&["-dmenu"])
-            .arg("-i")
-            .args(&["-p", "search"])
+            .arg("-i") // case-insensitive
+            .args(&["-matching", "fuzzy"]) // matching (normal/regex/glob/fuzzy)
+            .args(&["-p", "search"]) // prompt
             .args(&[
                 "-mesg",
                 &format!(
