@@ -119,7 +119,7 @@ impl PassEntry {
     }
 }
 
-pub fn get_password_store_dir(custom_dir: Option<&str>) -> String {
+pub fn get_password_store_dir(custom_dir: Option<String>) -> String {
     match custom_dir {
         Some(val) => val.to_owned(),
         None => match env::var("HOME") {

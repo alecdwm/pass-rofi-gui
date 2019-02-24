@@ -6,13 +6,13 @@ pub struct Rofi {
 }
 
 impl Rofi {
-    pub fn new() -> Rofi {
+    pub fn new(matching: &str) -> Rofi {
         let child = process::Command::new("rofi")
             .stdin(process::Stdio::piped())
             .stdout(process::Stdio::piped())
             .args(&["-dmenu"])
             .arg("-i") // case-insensitive
-            .args(&["-matching", "fuzzy"]) // matching (normal/regex/glob/fuzzy)
+            .args(&["-matching", matching]) // matching (normal/regex/glob/fuzzy)
             .args(&["-p", "search"]) // prompt
             .args(&[
                 "-mesg",

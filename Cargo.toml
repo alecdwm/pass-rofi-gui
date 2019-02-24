@@ -6,5 +6,5 @@ authors = ["alecdwm <alec@owls.io>"]
 edition = "2018"
 
 [dependencies]
-clap = "2.32.0"
+structopt = "0.2.14"
 boringauth = "0.7.0"

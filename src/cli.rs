@@ -1,16 +1,24 @@
-extern crate clap;
+extern crate structopt;
 
-use clap::clap_app;
+use structopt::StructOpt;
 
-pub fn app() -> clap::App<'static, 'static> {
-    clap_app!((env!("CARGO_PKG_NAME")) =>
-        (version: (env!("CARGO_PKG_VERSION")))
-        (author: (env!("CARGO_PKG_AUTHORS")))
-        (about: (env!("CARGO_PKG_DESCRIPTION")))
-        (@arg password_store_dir: --("password-store-dir") env[PASSWORD_STORE_DIR] "Overrides the default password storage directory")
-    )
+#[derive(Debug, StructOpt)]
+pub struct Cli {
+    /// Sets the rofi matching method
+    #[structopt(
+        long = "rofi-matching",
+        default_value = "normal",
+        raw(possible_values = r#"&["normal", "regex", "glob", "fuzzy"]"#)
+    )]
+    pub rofi_matching: String,
+
+    /// Overrides the default password storage directory
+    #[structopt(long = "password-store-dir", env = "PASSWORD_STORE_DIR")]
+    pub password_store_dir: Option<String>,
 }
 
-pub fn get_matches() -> clap::ArgMatches<'static> {
-    app().get_matches()
+impl Cli {
+    pub fn new() -> Cli {
+        Cli::from_args()
+    }
 }
