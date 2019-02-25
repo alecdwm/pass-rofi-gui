@@ -1,102 +1,23 @@
-use pass_rofi_gui::rofi::{EntryCommand, EntryResultCode};
-use pass_rofi_gui::{cli, otp, pass, rofi, xorg};
+use pass_rofi_gui::cli;
+use std::env;
+use std::process;
 
 fn main() {
-    let cli = cli::Cli::new();
+    let config = cli::Config::new();
 
-    let password_store_dir = pass::get_password_store_dir(cli.password_store_dir);
+    if let Err(error) = pass_rofi_gui::run(&config) {
+        let chain = error
+            .iter_chain()
+            .map(|f| format!("{}", f))
+            .collect::<Vec<_>>()
+            .join(": ");
 
-    let pass_entries =
-        pass::get_pass_entries(&password_store_dir).expect("failed to open password directory");
-
-    let rofi = rofi::Rofi::new(&cli.rofi_matching);
-    let result = rofi.select_entry(pass_entries);
-
-    if let Some(entry) = result.entry {
-        if let Some(code) = result.code {
-            let entry = pass::get_pass_entry(&entry);
-
-            match code {
-                EntryResultCode::Command(command) => match command {
-                    EntryCommand::Select => unimplemented!(),
-                    EntryCommand::AutofillEmail => xorg::type_string_in_window(
-                        &xorg::get_window_id_by_user_select()
-                            .expect("failed to get window_id by user selection"),
-                        &entry
-                            .get_value_with_key("email")
-                            .expect("no email found in entry"),
-                    )
-                    .expect("failed to focus window by window_id"),
-                    EntryCommand::AutofillUsername => xorg::type_string_in_window(
-                        &xorg::get_window_id_by_user_select()
-                            .expect("failed to get window_id by user selection"),
-                        &entry
-                            .get_value_with_key("username")
-                            .expect("no username found in entry"),
-                    )
-                    .expect("failed to focus window by window_id"),
-                    EntryCommand::AutofillPassword => xorg::type_string_in_window(
-                        &xorg::get_window_id_by_user_select()
-                            .expect("failed to get window_id by user selection"),
-                        &entry.get_password().expect("no password found in entry"),
-                    )
-                    .expect("failed to focus window by window_id"),
-                    EntryCommand::AutofillOTP => xorg::type_string_in_window(
-                        &xorg::get_window_id_by_user_select()
-                            .expect("failed to get window_id by user selection"),
-                        &otp::calculate_otp(
-                            &entry
-                                .get_value_with_key("otp_secret")
-                                .expect("no otp_secret found in entry"),
-                        )
-                        .expect("failed to calculate otp from secret"),
-                    )
-                    .expect("failed to focus window by window_id"),
-                    EntryCommand::AutofillCustom => {
-                        let window_id = xorg::get_window_id_by_user_select()
-                            .expect("failed to get window_id by user selection");
-                        let username_or_email =
-                            entry.get_value_with_key("username").unwrap_or_else(|| {
-                                entry
-                                    .get_value_with_key("email")
-                                    .expect("no username nor email found in entry")
-                            });
-                        let password = entry.get_password().expect("no password found in entry");
-
-                        xorg::type_string_in_window(&window_id, &username_or_email)
-                            .expect("failed to type username or email in window");
-                        xorg::type_key_in_window(&window_id, "Tab")
-                            .expect("failed to type tab key in window");
-                        xorg::type_string_in_window(&window_id, &password)
-                            .expect("failed to type password in window");
-                    }
-                    EntryCommand::CopyEmail => xorg::copy_to_clipboard(
-                        &entry
-                            .get_value_with_key("email")
-                            .expect("no email found in entry"),
-                    ),
-                    EntryCommand::CopyUsername => xorg::copy_to_clipboard(
-                        &entry
-                            .get_value_with_key("username")
-                            .expect("no username found in entry"),
-                    ),
-                    EntryCommand::CopyPassword => xorg::copy_to_clipboard(
-                        &entry.get_password().expect("no password found in entry"),
-                    ),
-                    EntryCommand::CopyOTP => xorg::copy_to_clipboard(
-                        &otp::calculate_otp(
-                            &entry
-                                .get_value_with_key("otp_secret")
-                                .expect("no otp_secret found in entry"),
-                        )
-                        .expect("failed to calculate otp from secret"),
-                    ),
-                    EntryCommand::OpenURLInBrowser => unimplemented!(),
-                },
-                EntryResultCode::Other(code) => {
-                    panic!(format!("Unknown rofi return code: {}", code))
-                }
-            }
+        if let Ok(_) = env::var("RUST_BACKTRACE") {
+            eprintln!("{}\n\n{}", error.backtrace(), chain);
+        } else {
+            eprintln!("{}", chain);
         }
+
+        process::exit(1);
     }
 }

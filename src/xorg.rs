@@ -1,18 +1,22 @@
+use failure::format_err;
+use failure::Error;
+use failure::ResultExt;
 use std::io::Write;
 use std::process;
 
-pub fn get_window_id_by_user_select() -> Result<String, String> {
+pub fn get_window_id_by_user_select() -> Result<String, Error> {
     let output = process::Command::new("xwininfo")
         .arg("-int")
         .output()
-        .expect("failed to exec xwininfo");
+        .context("Failed to exec xwininfo")?;
 
-    let output = String::from_utf8(output.stdout).expect("failed to read xwininfo output as utf8");
+    let output =
+        String::from_utf8(output.stdout).context("Failed to read xwininfo output as utf8")?;
 
     let line = output
         .lines()
         .find(|line| line.contains("Window id:"))
-        .ok_or("failed extracting window id")?;
+        .ok_or(format_err!("failed extracting window id"))?;
 
     let fragment = line.trim_start_matches("xwininfo: Window id: ");
     let window_id = fragment
@@ -22,42 +26,46 @@ pub fn get_window_id_by_user_select() -> Result<String, String> {
     Ok(window_id.to_owned())
 }
 
-pub fn focus_window(window_id: &str) -> Result<(), String> {
+pub fn focus_window(window_id: &str) -> Result<(), Error> {
     let status = process::Command::new("xdotool")
         .arg("windowfocus")
         .arg("--sync")
         .arg(window_id)
         .status()
-        .expect("failed to exec xdotool");
+        .context("Failed to exec xdotool")?;
 
     if !status.success() {
-        return Err(format!(
-            "failed to exec xdotool: exit code {}",
-            status.code().expect("failed to get exit code of xdotool")
+        return Err(format_err!(
+            "Failed to exec xdotool: exit code {}",
+            status
+                .code()
+                .ok_or(format_err!("Failed to get exit code of xdotool"))?
         ));
     };
     Ok(())
 }
 
-pub fn type_key_in_window(window_id: &str, key: &str) -> Result<(), String> {
+pub fn type_key_in_window(window_id: &str, key: &str) -> Result<(), Error> {
     let status = process::Command::new("xdotool")
         .arg("key")
         .args(&["--window", window_id])
         .arg("--clearmodifiers")
         .arg(key)
         .status()
-        .expect("failed to exec xdotool");
+        .context("Failed to exec xdotool")?;
 
     if !status.success() {
-        return Err(format!(
-            "failed to exec xdotool: exit code {}",
-            status.code().expect("failed to get exit code of xdotool")
+        return Err(format_err!(
+            "Failed to exec xdotool: exit code {}",
+            status
+                .code()
+                .ok_or(format_err!("failed to get exit code of xdotool"))?
         ));
     };
     Ok(())
 }
 
-pub fn type_string_in_window(window_id: &str, typed_string: &str) -> Result<(), String> {
+pub fn type_string_in_window(window_id: &str, typed_string: &str) -> Result<(), Error> {
     let status = process::Command::new("xdotool")
         .args(&[
             "type",
@@ -67,26 +75,32 @@ pub fn type_string_in_window(window_id: &str, typed_string: &str) -> Result<(), 
             typed_string,
         ])
         .status()
-        .expect("failed to exec xdotool");
+        .context("Failed to exec xdotool")?;
 
     if !status.success() {
-        return Err(format!(
-            "failed to exec xdotool: exit code {}",
-            status.code().expect("failed to get exit code of xdotool")
+        return Err(format_err!(
+            "Failed to exec xdotool: exit code {}",
+            status
+                .code()
+                .ok_or(format_err!("failed to get exit code of xdotool"))?
         ));
     };
     Ok(())
 }
 
-pub fn copy_to_clipboard(data: &str) {
+pub fn copy_to_clipboard(data: &str) -> Result<(), Error> {
     let mut xclip = process::Command::new("xclip")
         .stdin(process::Stdio::piped())
         .args(&["-selection", "clip-board"])
         .spawn()
-        .expect("failed to spawn xclip");
-    let stdin = xclip.stdin.as_mut().expect("failed to open stdin");
+        .context("Failed to spawn xclip")?;
+    let stdin = xclip
+        .stdin
+        .as_mut()
+        .ok_or(format_err!("Failed to open xclip stdin"))?;
     stdin
         .write_all(data.as_bytes())
-        .expect("failed to write to stdin");
-    xclip.wait().expect("failed to close xclip");
+        .context("Failed to write to xclip stdin")?;
+    xclip.wait().context("Failed to close xclip")?;
+    Ok(())
 }

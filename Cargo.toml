@@ -7,4 +7,5 @@ edition = "2018"
 
 [dependencies]
 structopt = "0.2.14"
+failure = "0.1.5"
 boringauth = "0.7.0"

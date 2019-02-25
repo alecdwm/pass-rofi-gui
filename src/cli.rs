@@ -3,7 +3,7 @@ extern crate structopt;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-pub struct Cli {
+pub struct Config {
     /// Sets the rofi matching method
     #[structopt(
         long = "rofi-matching",
@@ -17,8 +17,8 @@ pub struct Cli {
     pub password_store_dir: Option<String>,
 }
 
-impl Cli {
-    pub fn new() -> Cli {
-        Cli::from_args()
+impl Config {
+    pub fn new() -> Config {
+        Config::from_args()
     }
 }

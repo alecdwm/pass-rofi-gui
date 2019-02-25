@@ -1,3 +1,6 @@
+use failure::format_err;
+use failure::Error;
+use failure::ResultExt;
 use std::io::Write;
 use std::process;
 
@@ -6,7 +9,7 @@ pub struct Rofi {
 }
 
 impl Rofi {
-    pub fn new(matching: &str) -> Rofi {
+    pub fn new(matching: &str) -> Result<Rofi, Error> {
         let child = process::Command::new("rofi")
             .stdin(process::Stdio::piped())
             .stdout(process::Stdio::piped())
@@ -36,39 +39,43 @@ impl Rofi {
             .args(&["-kb-custom-18", "alt+o"])
             .args(&["-kb-custom-19", "alt+w"])
             .spawn()
-            .expect("failed to spawn rofi");
+            .context("Failed to spawn rofi")?;
 
-        Rofi { child }
+        Ok(Rofi { child })
     }
 
-    pub fn select_entry(mut self, entries: Vec<String>) -> EntryResult {
-        self.write_entries(entries);
-        let output = self.wait_with_output();
-        EntryResult::new(
-            match String::from_utf8(output.stdout)
-                .expect("failed to read entry name as utf8")
-                .trim()
-            {
-                "" => None,
-                val => Some(val.to_owned()),
-            },
-            output.status.code(),
-        )
+    pub fn select_entry(mut self, entries: Vec<String>) -> Result<EntryResult, Error> {
+        self.write_entries(entries)?;
+        let output = self.wait_with_output()?;
+        let entry = match String::from_utf8(output.stdout)
+            .context("Failed to read entry name as utf8")?
+            .trim()
+        {
+            "" => None,
+            val => Some(val.to_owned()),
+        };
+        Ok(EntryResult::new(entry, output.status.code()))
     }
 
-    fn write_entries(&mut self, entries: Vec<String>) {
-        let stdin = self.child.stdin.as_mut().expect("failed to open stdin");
+    fn write_entries(&mut self, entries: Vec<String>) -> Result<(), Error> {
+        let stdin = self
+            .child
+            .stdin
+            .as_mut()
+            .ok_or(format_err!("failed to open rofi stdin"))?;
         for entry in entries {
             stdin
                 .write_all(format!("{}\n", entry).as_bytes())
-                .expect("failed to write to stdin");
+                .context("failed to write to rofi stdin")?;
         }
+        Ok(())
     }
 
-    fn wait_with_output(self) -> process::Output {
-        self.child
+    fn wait_with_output(self) -> Result<process::Output, Error> {
+        Ok(self
+            .child
             .wait_with_output()
-            .expect("failed to read stdout")
+            .context("failed to read rofi stdout")?)
     }
 }
 
