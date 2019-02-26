@@ -1,3 +1,4 @@
+use crate::cli;
 use crate::otp;
 use crate::pass;
 use crate::rofi::EntryCommand;
@@ -5,8 +6,13 @@ use crate::xorg;
 use failure::format_err;
 use failure::Error;
 use failure::ResultExt;
+use std::process;
 
-pub fn run_action(entry: pass::PassEntry, command: EntryCommand) -> Result<(), Error> {
+pub fn run_action(
+    entry: pass::PassEntry,
+    command: EntryCommand,
+    config: &cli::Config,
+) -> Result<(), Error> {
     match command {
         EntryCommand::Select => unimplemented!(),
 
@@ -95,7 +101,22 @@ pub fn run_action(entry: pass::PassEntry, command: EntryCommand) -> Result<(), E
             .context("Failed to calculate otp from secret")?,
         )?,
 
-        EntryCommand::OpenURLInBrowser => unimplemented!(),
+        EntryCommand::OpenURLInBrowser => {
+            process::Command::new(
+                config
+                    .browser
+                    .clone()
+                    .ok_or(format_err!("No browser found, please set $BROWSER"))?
+                    .to_owned(),
+            )
+            .arg(
+                &entry
+                    .get_value_with_key("url")
+                    .ok_or(format_err!("No url found in entry"))?,
+            )
+            .spawn()
+            .context("Failed to spawn browser")?;
+        }
     }
     Ok(())
 }

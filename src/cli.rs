@@ -4,6 +4,10 @@ use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub struct Config {
+    /// Sets the browser for opening URLs
+    #[structopt(long = "browser", env = "BROWSER")]
+    pub browser: Option<String>,
+
     /// Sets the rofi matching method
     #[structopt(
         long = "rofi-matching",

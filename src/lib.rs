@@ -27,7 +27,7 @@ pub fn run(config: &cli::Config) -> Result<(), Error> {
     };
     let entry = pass::PassEntry::from_path(&entry_path)?;
 
-    actions::run_action(entry, command)
+    actions::run_action(entry, command, &config)
 }
 
 #[cfg(test)]
