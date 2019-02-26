@@ -18,6 +18,15 @@ fn main() {
             eprintln!("{}", chain);
         }
 
+        if !config.no_notify {
+            process::Command::new("notify-send")
+                .args(&["--expire-time", "2000"])
+                .args(&["--app-name", "pass-rofi-gui"])
+                .arg(chain)
+                .spawn()
+                .expect("Failed to spawn notify-send");
+        }
+
         process::exit(1);
     }
 }
