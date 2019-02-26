@@ -121,6 +121,7 @@ fn get_pass_entry_with_pinentry(entry_name: &str) -> Result<PassEntry, Error> {
     match exit_code {
         None => panic!("pass exit code was None not 0"),
         Some(0) => Ok(PassEntry::from_output(output.stdout)?),
+        Some(2) => Err(format_err!("Invalid passphrase provided")),
         Some(val) => panic!(format!("pass exit code was {} not 0", val)),
     }
 }
