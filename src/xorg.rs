@@ -16,7 +16,7 @@ pub fn get_window_id_by_user_select() -> Result<String, Error> {
     let line = output
         .lines()
         .find(|line| line.contains("Window id:"))
-        .ok_or(format_err!("failed extracting window id"))?;
+        .ok_or(format_err!("Failed extracting window id"))?;
 
     let fragment = line.trim_start_matches("xwininfo: Window id: ");
     let window_id = fragment
@@ -59,7 +59,7 @@ pub fn type_key_in_window(window_id: &str, key: &str) -> Result<(), Error> {
             "Failed to exec xdotool: exit code {}",
             status
                 .code()
-                .ok_or(format_err!("failed to get exit code of xdotool"))?
+                .ok_or(format_err!("Failed to get exit code of xdotool"))?
         ));
     };
     Ok(())
@@ -82,7 +82,7 @@ pub fn type_string_in_window(window_id: &str, typed_string: &str) -> Result<(), 
             "Failed to exec xdotool: exit code {}",
             status
                 .code()
-                .ok_or(format_err!("failed to get exit code of xdotool"))?
+                .ok_or(format_err!("Failed to get exit code of xdotool"))?
         ));
     };
     Ok(())

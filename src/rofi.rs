@@ -1,135 +1,208 @@
 use failure::format_err;
 use failure::Error;
 use failure::ResultExt;
+use std::fmt;
 use std::io::Write;
 use std::process;
+use std::str::FromStr;
 
-pub struct Rofi {
-    child: process::Child,
+pub fn select_item<TValue: fmt::Display + Clone, TCommand: fmt::Display + Clone>(
+    items: &Vec<TValue>,
+    matching: &str,
+    custom_keybindings: RofiCustomKeybindings<TCommand>,
+) -> Result<RofiSelectedItem<TValue, TCommand>, Error> {
+    RofiSelectedItem::from_items(items, matching, custom_keybindings)
 }
 
-impl Rofi {
-    pub fn new(matching: &str) -> Result<Rofi, Error> {
-        let child = process::Command::new("rofi")
+#[derive(Debug)]
+pub struct RofiSelectedItem<TValue: fmt::Display + Clone, TCommand: fmt::Display + Clone> {
+    pub value: Option<TValue>,
+    pub command: Option<TCommand>,
+}
+
+impl<TValue: fmt::Display + Clone, TCommand: fmt::Display + Clone>
+    RofiSelectedItem<TValue, TCommand>
+{
+    fn new(value: Option<TValue>, command: Option<TCommand>) -> RofiSelectedItem<TValue, TCommand> {
+        RofiSelectedItem { value, command }
+    }
+
+    pub fn from_items(
+        items: &Vec<TValue>,
+        matching: &str,
+        custom_keybindings: RofiCustomKeybindings<TCommand>,
+    ) -> Result<RofiSelectedItem<TValue, TCommand>, Error> {
+        let mut command = process::Command::new("rofi");
+        command
             .stdin(process::Stdio::piped())
             .stdout(process::Stdio::piped())
             .args(&["-dmenu"])
             .arg("-i") // case-insensitive
             .args(&["-matching", matching]) // matching (normal/regex/glob/fuzzy)
             .args(&["-p", "search"]) // prompt
-            .args(&[
-                "-mesg",
-                &format!(
-                    "{:35}{}\n{:35}{}\n{:35}{}\n{:35}{}\n{:35}{}",
-                    "alt+1: autofill email",
-                    "alt+e: copy email",
-                    "alt+2: autofill username",
-                    "alt+u: copy username",
-                    "alt+3: autofill password",
-                    "alt+p: copy password",
-                    "alt+4: autofill otp",
-                    "alt+o: copy otp",
-                    "alt+5: autofill (user/email)+pass",
-                    "alt+w: open url in web browser"
-                ),
-            ])
-            .args(&["-kb-custom-15", "alt+e"])
-            .args(&["-kb-custom-16", "alt+u"])
-            .args(&["-kb-custom-17", "alt+p"])
-            .args(&["-kb-custom-18", "alt+o"])
-            .args(&["-kb-custom-19", "alt+w"])
-            .spawn()
-            .context("Failed to spawn rofi")?;
+            .args(&["-format", "i"]) // output index of selected entry
+            .args(&["-mesg", &custom_keybindings.format_message()]);
 
-        Ok(Rofi { child })
-    }
+        for (i, keybind) in custom_keybindings.keybinds().iter().enumerate() {
+            command.args(&[format!("-kb-custom-{}", i + 1), keybind.binding.clone()]);
+        }
 
-    pub fn select_entry(mut self, entries: Vec<String>) -> Result<EntryResult, Error> {
-        self.write_entries(entries)?;
-        let output = self.wait_with_output()?;
-        let entry = match String::from_utf8(output.stdout)
-            .context("Failed to read entry name as utf8")?
+        let mut child = command.spawn().context("Failed to spawn rofi")?;
+
+        let stdin = child
+            .stdin
+            .as_mut()
+            .ok_or(format_err!("Failed to open rofi stdin"))?;
+
+        for item in items {
+            stdin
+                .write_all(format!("{}\n", item).as_bytes())
+                .context("Failed to write to rofi stdin")?;
+        }
+
+        let output = child
+            .wait_with_output()
+            .context("Failed to read rofi stdout")?;
+
+        let item_index = match String::from_utf8(output.stdout)
+            .context("Failed to read output as utf8")?
             .trim()
         {
             "" => None,
-            val => Some(val.to_owned()),
+            val => Some(usize::from_str(val).context("Failed to parse item index as usize")?),
         };
-        Ok(EntryResult::new(entry, output.status.code()))
-    }
 
-    fn write_entries(&mut self, entries: Vec<String>) -> Result<(), Error> {
-        let stdin = self
-            .child
-            .stdin
-            .as_mut()
-            .ok_or(format_err!("failed to open rofi stdin"))?;
-        for entry in entries {
-            stdin
-                .write_all(format!("{}\n", entry).as_bytes())
-                .context("failed to write to rofi stdin")?;
-        }
-        Ok(())
-    }
+        let item = match item_index {
+            Some(item_index) => Some(
+                items
+                    .get(item_index)
+                    .ok_or(format_err!(
+                        "Failed to index item using index value from rofi output"
+                    ))?
+                    .clone(),
+            ),
+            None => None,
+        };
 
-    fn wait_with_output(self) -> Result<process::Output, Error> {
-        Ok(self
-            .child
-            .wait_with_output()
-            .context("failed to read rofi stdout")?)
+        let command = custom_keybindings.exit_code_to_command(output.status.code());
+
+        Ok(RofiSelectedItem::new(item, command))
     }
 }
 
 #[derive(Debug)]
-pub struct EntryResult {
-    pub entry: Option<String>,
-    pub code: Option<EntryResultCode>,
+pub struct RofiCustomKeybindings<TCommand: fmt::Display + Clone> {
+    select_command: TCommand,
+    keybinds: Vec<Keybind<TCommand>>,
 }
 
-impl EntryResult {
-    pub fn new(entry: Option<String>, code: Option<i32>) -> EntryResult {
-        EntryResult {
-            entry,
-            code: code.map(|val| EntryResultCode::from_i32(val)),
+impl<TCommand: fmt::Display + Clone> RofiCustomKeybindings<TCommand> {
+    pub fn new(select_command: TCommand) -> RofiCustomKeybindings<TCommand> {
+        RofiCustomKeybindings {
+            select_command,
+            keybinds: Vec::new(),
         }
     }
-}
 
-#[derive(Debug)]
-pub enum EntryCommand {
-    Select,
-    AutofillEmail,
-    AutofillUsername,
-    AutofillPassword,
-    AutofillOTP,
-    AutofillCustom,
-    CopyEmail,
-    CopyUsername,
-    CopyPassword,
-    CopyOTP,
-    OpenURLInBrowser,
-}
+    pub fn add(
+        mut self,
+        keybind: &str,
+        command: TCommand,
+    ) -> Result<RofiCustomKeybindings<TCommand>, Error> {
+        if self.keybinds.len() >= 19 {
+            return Err(format_err!(
+                "Max number of custom rofi keybindings exceeded"
+            ));
+        }
+        self.keybinds.push(Keybind {
+            binding: keybind.to_owned().clone(),
+            command: command,
+        });
+        Ok(self)
+    }
 
-#[derive(Debug)]
-pub enum EntryResultCode {
-    Command(EntryCommand),
-    Other(i32),
-}
+    pub fn keybinds(&self) -> &Vec<Keybind<TCommand>> {
+        &self.keybinds
+    }
 
-impl EntryResultCode {
-    fn from_i32(code: i32) -> EntryResultCode {
+    pub fn format_message(&self) -> String {
+        let mut message = String::new();
+        for (i, keybind) in self.keybinds.iter().enumerate() {
+            message.push_str(&match (i, i % 2 == 0) {
+                (0, true) => format!("{:35}", format!("{}: {}", keybind.binding, keybind.command)),
+                (_, true) => format!(
+                    "\n{:35}",
+                    format!("{}: {}", keybind.binding, keybind.command)
+                ),
+                (_, false) => format!("{}: {}", keybind.binding, keybind.command),
+            });
+        }
+        message
+    }
+
+    pub fn exit_code_to_command(&self, code: Option<i32>) -> Option<TCommand> {
         match code {
-            0 => EntryResultCode::Command(EntryCommand::Select),
-            10 => EntryResultCode::Command(EntryCommand::AutofillEmail),
-            11 => EntryResultCode::Command(EntryCommand::AutofillUsername),
-            12 => EntryResultCode::Command(EntryCommand::AutofillPassword),
-            13 => EntryResultCode::Command(EntryCommand::AutofillOTP),
-            14 => EntryResultCode::Command(EntryCommand::AutofillCustom),
-            24 => EntryResultCode::Command(EntryCommand::CopyEmail),
-            25 => EntryResultCode::Command(EntryCommand::CopyUsername),
-            26 => EntryResultCode::Command(EntryCommand::CopyPassword),
-            27 => EntryResultCode::Command(EntryCommand::CopyOTP),
-            28 => EntryResultCode::Command(EntryCommand::OpenURLInBrowser),
-            val => EntryResultCode::Other(val),
+            Some(code) => {
+                if code == 0 {
+                    return Some(self.select_command.clone());
+                }
+                // rofi allows for 19 custom keybindings in total.
+                // rofi signals that a custom keybinding has been used
+                // by a return code between 10 and 28 where:
+                //   -kb-custom-1 corresponds to exit code 10
+                //   -kb-custom-2 corresponds to exit code 11
+                //   -kb-custom-n corresponds to exit code n+9
+                //   -kb-custom-19 corresponds to exit code 28
+                if 10 <= code && code <= 28 {
+                    // custom keybinds are 1-indexed, but our array of
+                    // keybinds, being an array, is obviously 0-indexed
+                    let index = code - 10;
+                    return match self.keybinds.get(index as usize) {
+                        Some(keybind) => Some(keybind.command.clone()),
+                        None => None,
+                    };
+                }
+                None
+            }
+            None => None,
         }
     }
+}
+
+#[derive(Debug)]
+pub struct Keybind<TCommand: fmt::Display + Clone> {
+    pub binding: String,
+    pub command: TCommand,
+}
+
+pub fn get_passphrase() -> Result<Option<String>, Error> {
+    let passphrase = match String::from_utf8(
+        process::Command::new("rofi")
+            .stdin(process::Stdio::piped())
+            .stdout(process::Stdio::piped())
+            .args(&["-dmenu"])
+            .args(&["-input", "/dev/null"])
+            .args(&["-lines", "0"])
+            .arg("-i") // case-insensitive
+            .args(&["-width", "20"])
+            .arg("-disable-history")
+            .arg("-password")
+            .args(&["-p", "passphrase"]) // prompt
+            .args(&[
+                "-mesg",
+                "Please enter the passphrase to unlock the OpenPGP secret key",
+            ])
+            .spawn()
+            .context("Failed to spawn rofi")?
+            .wait_with_output()
+            .context("Failed to read rofi stdout")?
+            .stdout,
+    )
+    .context("Failed to read passphrase as utf8")?
+    .trim()
+    {
+        "" => None,
+        val => Some(val.to_owned()),
+    };
+    Ok(passphrase)
 }

@@ -1,23 +1,17 @@
-use crate::pinentry;
+use crate::rofi;
 use failure::format_err;
 use failure::Error;
 use failure::ResultExt;
 use std::env;
+use std::fmt;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
 use std::process;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct PassEntry {
-    fields: Vec<PassEntryField>,
-}
-
-#[derive(Debug)]
-enum PassEntryField {
-    Password(String),
-    KeyVal(String, String),
-    Other(String),
+    pub fields: Vec<PassEntryField>,
 }
 
 impl PassEntry {
@@ -74,6 +68,23 @@ impl PassEntry {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum PassEntryField {
+    Password(String),
+    KeyVal(String, String),
+    Other(String),
+}
+
+impl fmt::Display for PassEntryField {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            PassEntryField::Password(val) => write!(f, "{}", val),
+            PassEntryField::KeyVal(key, val) => write!(f, "{}: {}", key, val),
+            PassEntryField::Other(val) => write!(f, "{}", val),
+        }
+    }
+}
+
 fn get_pass_entry_without_pinentry(entry_name: &str) -> Result<PassEntry, Error> {
     let output = process::Command::new("pass")
         .env("PASSWORD_STORE_GPG_OPTS", "--pinentry-mode loopback")
@@ -92,7 +103,7 @@ fn get_pass_entry_without_pinentry(entry_name: &str) -> Result<PassEntry, Error>
 
 fn get_pass_entry_with_pinentry(entry_name: &str) -> Result<PassEntry, Error> {
     let passphrase =
-        pinentry::rofi_get_passphrase()?.ok_or(format_err!("Failed to get passphrase via rofi"))?;
+        rofi::get_passphrase()?.ok_or(format_err!("Failed to get passphrase via rofi"))?;
 
     let mut child = process::Command::new("pass")
         .stdin(process::Stdio::piped())
@@ -126,6 +137,7 @@ fn get_pass_entry_with_pinentry(entry_name: &str) -> Result<PassEntry, Error> {
     }
 }
 
+#[derive(Debug)]
 pub struct PassStoreDirectory {
     pub entry_paths: Vec<String>,
 }
