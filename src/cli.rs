@@ -32,18 +32,18 @@ pub struct Config {
     pub browser: Option<String>,
     pub no_notify: bool,
     pub rofi_matching: String,
-    pub pass_store_dir: pass::PassStoreDirectory,
+    pub pass_store_path: String,
 }
 
 impl Config {
-    pub fn new() -> Result<Config, Error> {
+    pub fn new() -> Result<Self, Error> {
         let cli_config = CliConfig::from_args();
 
-        Ok(Config {
+        Ok(Self {
             browser: cli_config.browser,
             no_notify: cli_config.no_notify,
             rofi_matching: cli_config.rofi_matching,
-            pass_store_dir: pass::PassStoreDirectory::from_custom_path(
+            pass_store_path: pass::PassStoreDirectory::calculate_pass_store_path(
                 &cli_config.password_store_dir,
             )?,
         })

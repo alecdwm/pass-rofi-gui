@@ -9,13 +9,15 @@ use std::str::FromStr;
 pub fn select_item<TValue: fmt::Display + Clone, TCommand: fmt::Display + Clone>(
     items: &Vec<TValue>,
     matching: &str,
+    selected_index: usize,
     custom_keybindings: RofiCustomKeybindings<TCommand>,
 ) -> Result<RofiSelectedItem<TValue, TCommand>, Error> {
-    RofiSelectedItem::from_items(items, matching, custom_keybindings)
+    RofiSelectedItem::from_items(items, matching, selected_index, custom_keybindings)
 }
 
 #[derive(Debug)]
 pub struct RofiSelectedItem<TValue: fmt::Display + Clone, TCommand: fmt::Display + Clone> {
+    pub index: Option<usize>,
     pub value: Option<TValue>,
     pub command: Option<TCommand>,
 }
@@ -23,23 +25,22 @@ pub struct RofiSelectedItem<TValue: fmt::Display + Clone, TCommand: fmt::Display
 impl<TValue: fmt::Display + Clone, TCommand: fmt::Display + Clone>
     RofiSelectedItem<TValue, TCommand>
 {
-    fn new(value: Option<TValue>, command: Option<TCommand>) -> RofiSelectedItem<TValue, TCommand> {
-        RofiSelectedItem { value, command }
-    }
-
     pub fn from_items(
         items: &Vec<TValue>,
         matching: &str,
+        selected_index: usize,
         custom_keybindings: RofiCustomKeybindings<TCommand>,
-    ) -> Result<RofiSelectedItem<TValue, TCommand>, Error> {
+    ) -> Result<Self, Error> {
         let mut command = process::Command::new("rofi");
         command
             .stdin(process::Stdio::piped())
             .stdout(process::Stdio::piped())
-            .args(&["-dmenu"])
-            .arg("-i") // case-insensitive
+            .arg("-dmenu")
+            .arg("-i") // case-insensitive search query
+            .args(&["-scroll-method", "1"]) // infinite scroll
+            .args(&["-selected-row", &selected_index.to_string()])
             .args(&["-matching", matching]) // matching (normal/regex/glob/fuzzy)
-            .args(&["-p", "search"]) // prompt
+            .args(&["-p", "search"]) // prompt text
             .args(&["-format", "i"]) // output index of selected entry
             .args(&["-mesg", &custom_keybindings.format_message()]);
 
@@ -86,7 +87,11 @@ impl<TValue: fmt::Display + Clone, TCommand: fmt::Display + Clone>
 
         let command = custom_keybindings.exit_code_to_command(output.status.code());
 
-        Ok(RofiSelectedItem::new(item, command))
+        Ok(Self {
+            index: item_index,
+            value: item,
+            command,
+        })
     }
 }
 
@@ -97,18 +102,14 @@ pub struct RofiCustomKeybindings<TCommand: fmt::Display + Clone> {
 }
 
 impl<TCommand: fmt::Display + Clone> RofiCustomKeybindings<TCommand> {
-    pub fn new(select_command: TCommand) -> RofiCustomKeybindings<TCommand> {
-        RofiCustomKeybindings {
+    pub fn new(select_command: TCommand) -> Self {
+        Self {
             select_command,
             keybinds: Vec::new(),
         }
     }
 
-    pub fn add(
-        mut self,
-        keybind: &str,
-        command: TCommand,
-    ) -> Result<RofiCustomKeybindings<TCommand>, Error> {
+    pub fn add(mut self, keybind: &str, command: TCommand) -> Result<Self, Error> {
         if self.keybinds.len() >= 19 {
             return Err(format_err!(
                 "Max number of custom rofi keybindings exceeded"
@@ -116,7 +117,7 @@ impl<TCommand: fmt::Display + Clone> RofiCustomKeybindings<TCommand> {
         }
         self.keybinds.push(Keybind {
             binding: keybind.to_owned().clone(),
-            command: command,
+            command,
         });
         Ok(self)
     }
@@ -127,6 +128,7 @@ impl<TCommand: fmt::Display + Clone> RofiCustomKeybindings<TCommand> {
 
     pub fn format_message(&self) -> String {
         let mut message = String::new();
+        message.push_str(&format!("enter: {}\n", self.select_command));
         for (i, keybind) in self.keybinds.iter().enumerate() {
             message.push_str(&match (i, i % 2 == 0) {
                 (0, true) => format!("{:35}", format!("{}: {}", keybind.binding, keybind.command)),
@@ -183,7 +185,6 @@ pub fn get_passphrase() -> Result<Option<String>, Error> {
             .args(&["-dmenu"])
             .args(&["-input", "/dev/null"])
             .args(&["-lines", "0"])
-            .arg("-i") // case-insensitive
             .args(&["-width", "20"])
             .arg("-disable-history")
             .arg("-password")
@@ -205,4 +206,35 @@ pub fn get_passphrase() -> Result<Option<String>, Error> {
         val => Some(val.to_owned()),
     };
     Ok(passphrase)
+}
+
+pub fn get_new_field_value(prompt: &str, old_value: &str) -> Result<Option<String>, Error> {
+    let new_value = match String::from_utf8(
+        process::Command::new("rofi")
+            .stdin(process::Stdio::piped())
+            .stdout(process::Stdio::piped())
+            .args(&["-dmenu"])
+            .args(&["-input", "/dev/null"])
+            .args(&["-lines", "0"])
+            .args(&["-width", "20"])
+            .arg("-disable-history")
+            .args(&["-p", prompt])
+            .args(&["-filter", old_value])
+            .args(&[
+                "-mesg",
+                "enter to save\nctrl+u to clear\nesc or empty input to cancel",
+            ])
+            .spawn()
+            .context("Failed to spawn rofi")?
+            .wait_with_output()
+            .context("Failed to read rofi stdout")?
+            .stdout,
+    )
+    .context("Failed to read new value as utf8")?
+    .trim()
+    {
+        "" => None,
+        val => Some(val.to_owned()),
+    };
+    Ok(new_value)
 }

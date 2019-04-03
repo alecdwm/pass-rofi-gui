@@ -12,20 +12,23 @@ use std::process;
 #[derive(Debug)]
 pub struct Menu {
     state: MenuState,
+    main_menu_selected_index: usize,
+    entry_menu_selected_index: usize,
 }
 
 #[derive(Debug, PartialEq)]
 enum MenuState {
     MainMenu,
     EntryMenu(pass::PassEntry),
-    // EditEntryFieldMenu(pass::PassEntry, pass::PassEntryField),
     Done,
 }
 
 impl Menu {
-    pub fn new() -> Menu {
-        Menu {
+    pub fn new() -> Self {
+        Self {
             state: MenuState::MainMenu,
+            main_menu_selected_index: 0,
+            entry_menu_selected_index: 0,
         }
     }
 
@@ -33,16 +36,20 @@ impl Menu {
         self.state != MenuState::Done
     }
 
-    pub fn run(self, config: &cli::Config) -> Result<Menu, Error> {
-        Ok(Menu {
+    pub fn run(mut self, config: &cli::Config) -> Result<Self, Error> {
+        Ok(Self {
             state: match self.state {
-                MenuState::MainMenu => main_menu(config)?,
-                MenuState::EntryMenu(entry) => entry_menu(entry, config)?,
-                // MenuState::EditEntryFieldMenu(entry, field) => {
-                //     edit_entry_field_menu(entry, field, config)?
-                // }
+                MenuState::MainMenu => {
+                    self.entry_menu_selected_index = 0;
+                    main_menu(&mut self.main_menu_selected_index, config)?
+                }
+                MenuState::EntryMenu(entry) => {
+                    entry_menu(&mut self.entry_menu_selected_index, entry, config)?
+                }
                 MenuState::Done => self.state,
             },
+            main_menu_selected_index: self.main_menu_selected_index,
+            entry_menu_selected_index: self.entry_menu_selected_index,
         })
     }
 }
@@ -65,7 +72,7 @@ pub enum MainMenuCommand {
 impl fmt::Display for MainMenuCommand {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            MainMenuCommand::Select => write!(f, "select"),
+            MainMenuCommand::Select => write!(f, "select entry"),
             MainMenuCommand::AutofillEmail => write!(f, "autofill email"),
             MainMenuCommand::AutofillUsername => write!(f, "autofill username"),
             MainMenuCommand::AutofillPassword => write!(f, "autofill password"),
@@ -80,7 +87,12 @@ impl fmt::Display for MainMenuCommand {
     }
 }
 
-fn main_menu(config: &cli::Config) -> Result<MenuState, Error> {
+fn main_menu(
+    main_menu_selected_index: &mut usize,
+    config: &cli::Config,
+) -> Result<MenuState, Error> {
+    let pass_store_dir = pass::PassStoreDirectory::new(&config.pass_store_path)?;
+
     let keybinds = rofi::RofiCustomKeybindings::new(MainMenuCommand::Select)
         .add("alt+1", MainMenuCommand::AutofillEmail)?
         .add("alt+e", MainMenuCommand::CopyEmail)?
@@ -94,11 +106,13 @@ fn main_menu(config: &cli::Config) -> Result<MenuState, Error> {
         .add("alt+w", MainMenuCommand::OpenURLInBrowser)?;
 
     let selected = rofi::select_item(
-        &config.pass_store_dir.entry_paths,
+        &pass_store_dir.entry_paths,
         &config.rofi_matching,
+        *main_menu_selected_index,
         keybinds,
     )?;
 
+    *main_menu_selected_index = selected.index.unwrap_or_default();
     let entry_path = selected.value.ok_or(format_err!("No entry selected"))?;
     let command = selected
         .command
@@ -219,7 +233,9 @@ fn main_menu(config: &cli::Config) -> Result<MenuState, Error> {
 
 #[derive(Debug, Clone)]
 pub enum EntryMenuCommand {
-    Select,
+    Edit,
+    New,
+    Delete,
     Autofill,
     Copy,
 }
@@ -227,23 +243,42 @@ pub enum EntryMenuCommand {
 impl fmt::Display for EntryMenuCommand {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            EntryMenuCommand::Select => write!(f, "select"),
-            EntryMenuCommand::Autofill => write!(f, "autofill"),
-            EntryMenuCommand::Copy => write!(f, "copy"),
+            EntryMenuCommand::Edit => write!(f, "edit field"),
+            EntryMenuCommand::New => write!(f, "new field"),
+            EntryMenuCommand::Delete => write!(f, "delete field"),
+            EntryMenuCommand::Autofill => write!(f, "autofill field"),
+            EntryMenuCommand::Copy => write!(f, "copy field"),
         }
     }
 }
 
-fn entry_menu(entry: pass::PassEntry, config: &cli::Config) -> Result<MenuState, Error> {
-    let keybinds = rofi::RofiCustomKeybindings::new(EntryMenuCommand::Select)
+fn entry_menu(
+    entry_menu_selected_index: &mut usize,
+    entry: pass::PassEntry,
+    config: &cli::Config,
+) -> Result<MenuState, Error> {
+    let keybinds = rofi::RofiCustomKeybindings::new(EntryMenuCommand::Edit)
+        .add("alt+n", EntryMenuCommand::New)?
+        .add("alt+d", EntryMenuCommand::Delete)?
         .add("alt+1", EntryMenuCommand::Autofill)?
         .add("alt+c", EntryMenuCommand::Copy)?;
 
-    let selected = rofi::select_item(&entry.fields, &config.rofi_matching, keybinds)?;
+    let selected = rofi::select_item(
+        &entry.fields,
+        &config.rofi_matching,
+        *entry_menu_selected_index,
+        keybinds,
+    )?;
 
+    *entry_menu_selected_index = selected.index.unwrap_or_default();
     let field = match selected.value {
         Some(val) => val,
         None => return Ok(MenuState::MainMenu),
+    };
+    let field_key = match &field {
+        pass::PassEntryField::Password(_) => "password",
+        pass::PassEntryField::KeyVal(key, _) => key,
+        pass::PassEntryField::Other(_) => "string",
     };
     let field_val = match &field {
         pass::PassEntryField::Password(val) => val,
@@ -255,9 +290,28 @@ fn entry_menu(entry: pass::PassEntry, config: &cli::Config) -> Result<MenuState,
         .ok_or(format_err!("Rofi command code not found"))?;
 
     match command {
-        EntryMenuCommand::Select => {
-            return Ok(MenuState::Done);
-            // return Ok(MenuState::EditEntryFieldMenu(entry, field));
+        EntryMenuCommand::Edit => {
+            let new_value = match rofi::get_new_field_value(field_key, field_val)? {
+                Some(val) => val,
+                None => return Ok(MenuState::EntryMenu(entry)),
+            };
+
+            let mut new_entry = entry.clone();
+            new_entry.modify_field_value(*entry_menu_selected_index, &new_value)?;
+            new_entry.insert_into_store()?;
+
+            return Ok(MenuState::EntryMenu(new_entry));
+        }
+
+        EntryMenuCommand::New => {
+            dbg!("unimplemented!");
+            return Ok(MenuState::EntryMenu(entry));
+        }
+
+        EntryMenuCommand::Delete => {
+            dbg!("unimplemented!");
+            *entry_menu_selected_index -= 1;
+            return Ok(MenuState::EntryMenu(entry));
         }
 
         EntryMenuCommand::Autofill => xorg::type_string_in_window(
@@ -272,12 +326,3 @@ fn entry_menu(entry: pass::PassEntry, config: &cli::Config) -> Result<MenuState,
 
     Ok(MenuState::Done)
 }
-
-// fn edit_entry_field_menu(
-//     entry: pass::PassEntry,
-//     field: pass::PassEntryField,
-//     config: &cli::Config,
-// ) -> Result<MenuState, Error> {
-//     unimplemented!();
-//     Ok(MenuState::Done)
-// }
