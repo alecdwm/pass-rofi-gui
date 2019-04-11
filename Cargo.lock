@@ -268,7 +268,7 @@ dependencies = [
 
 [[package]]
 name = "pass-rofi-gui"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "boringauth 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
