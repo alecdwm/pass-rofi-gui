@@ -1,5 +1,3 @@
-extern crate structopt;
-
 use crate::pass;
 use failure::Error;
 use structopt::StructOpt;
@@ -11,7 +9,7 @@ struct CliConfig {
     #[structopt(long, env = "BROWSER")]
     browser: Option<String>,
 
-    /// Disable notify-send notifications
+    /// Disable desktop notifications
     #[structopt(long)]
     no_notify: bool,
 

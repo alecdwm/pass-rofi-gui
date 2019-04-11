@@ -1,4 +1,5 @@
 use failure::Error;
+use notify_rust::Notification;
 use pass_rofi_gui::cli;
 use std::env;
 use std::process;
@@ -29,11 +30,11 @@ fn print_error_chain(error: Error, no_notify: bool) {
     }
 
     if !no_notify {
-        process::Command::new("notify-send")
-            .args(&["--expire-time", "2000"])
-            .args(&["--app-name", "pass-rofi-gui"])
-            .arg(chain)
-            .spawn()
-            .expect("Failed to spawn notify-send");
+        Notification::new()
+            .appname("pass-rofi-gui")
+            .summary(&chain)
+            .timeout(2000)
+            .show()
+            .expect("Failed to show desktop notification");
     }
 }
