@@ -394,7 +394,7 @@ dependencies = [
 
 [[package]]
 name = "pass-rofi-gui"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "libreauth 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
