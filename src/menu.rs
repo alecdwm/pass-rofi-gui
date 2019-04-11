@@ -304,14 +304,34 @@ fn entry_menu(
         }
 
         EntryMenuCommand::New => {
-            dbg!("unimplemented!");
-            return Ok(MenuState::EntryMenu(entry));
+            let new_value = match rofi::get_new_field_value("new field", "")? {
+                Some(val) => val,
+                None => return Ok(MenuState::EntryMenu(entry)),
+            };
+
+            let mut new_entry = entry.clone();
+            let new_index = match new_entry.fields.len() > 0 {
+                true => *entry_menu_selected_index + 1,
+                false => *entry_menu_selected_index,
+            };
+            new_entry.insert_new_field(new_index, &new_value);
+            new_entry.insert_into_store()?;
+
+            *entry_menu_selected_index += 1;
+
+            return Ok(MenuState::EntryMenu(new_entry));
         }
 
         EntryMenuCommand::Delete => {
-            dbg!("unimplemented!");
-            *entry_menu_selected_index -= 1;
-            return Ok(MenuState::EntryMenu(entry));
+            let mut new_entry = entry.clone();
+
+            new_entry.remove_field(*entry_menu_selected_index)?;
+            new_entry.insert_into_store()?;
+            if new_entry.fields.len() < *entry_menu_selected_index + 1 {
+                *entry_menu_selected_index -= 1;
+            }
+
+            return Ok(MenuState::EntryMenu(new_entry));
         }
 
         EntryMenuCommand::Autofill => xorg::type_string_in_window(

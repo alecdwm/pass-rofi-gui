@@ -44,6 +44,21 @@ impl PassEntry {
         })
     }
 
+    pub fn insert_new_field(&mut self, index: usize, new_field: &str) {
+        let new_field = match index {
+            0 => PassEntryField::Password(new_field.to_owned()),
+            _ => match new_field.find(": ") {
+                Some(split_point) => {
+                    let split = new_field.split_at(split_point);
+                    PassEntryField::KeyVal(split.0.to_owned(), split.1.split_at(2).1.to_owned())
+                }
+                None => PassEntryField::Other(new_field.to_owned()),
+            },
+        };
+
+        self.fields.insert(index, new_field);
+    }
+
     pub fn modify_field_value(&mut self, field_index: usize, new_value: &str) -> Result<(), Error> {
         let field = self
             .fields
@@ -57,6 +72,20 @@ impl PassEntry {
         };
 
         *value = new_value.to_owned();
+
+        Ok(())
+    }
+
+    pub fn remove_field(&mut self, index: usize) -> Result<(), Error> {
+        if let PassEntryField::Password(_) = self
+            .fields
+            .get(index)
+            .ok_or(format_err!("No field found at given index"))?
+        {
+            return Err(format_err!("Cannot delete password field"));
+        }
+
+        self.fields.remove(index);
 
         Ok(())
     }
