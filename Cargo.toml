@@ -8,5 +8,5 @@ edition = "2018"
 [dependencies]
 structopt = "0.2.14"
 failure = "0.1.5"
-boringauth = "0.7.0"
+libreauth = "0.11.0"
 notify-rust = "3.5.0"
