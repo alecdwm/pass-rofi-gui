@@ -1,6 +1,6 @@
 [package]
 name = "pass-rofi-gui"
-description = "A rofi GUI for pass"
+description = "A password manager GUI that integrates pass with rofi"
 version = "0.1.0"
 authors = ["alecdwm <alec@owls.io>"]
 edition = "2018"
