@@ -9,7 +9,7 @@ use failure::ResultExt;
 use std::fmt;
 use std::process;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Menu {
     state: MenuState,
     main_menu_selected_index: usize,
@@ -23,13 +23,15 @@ enum MenuState {
     Done,
 }
 
+impl Default for MenuState {
+    fn default() -> Self {
+        MenuState::MainMenu
+    }
+}
+
 impl Menu {
     pub fn new() -> Self {
-        Self {
-            state: MenuState::MainMenu,
-            main_menu_selected_index: 0,
-            entry_menu_selected_index: 0,
-        }
+        Default::default()
     }
 
     pub fn active(&self) -> bool {
@@ -113,10 +115,12 @@ fn main_menu(
     )?;
 
     *main_menu_selected_index = selected.index.unwrap_or_default();
-    let entry_path = selected.value.ok_or(format_err!("No entry selected"))?;
+    let entry_path = selected
+        .value
+        .ok_or_else(|| format_err!("No entry selected"))?;
     let command = selected
         .command
-        .ok_or(format_err!("Rofi command code not found"))?;
+        .ok_or_else(|| format_err!("Rofi command code not found"))?;
 
     let entry = pass::PassEntry::from_path(&entry_path)?;
 
@@ -130,7 +134,7 @@ fn main_menu(
                 .context("Failed to get window_id by user selection")?,
             &entry
                 .get_value_with_key("email")
-                .ok_or(format_err!("No email found in entry"))?,
+                .ok_or_else(|| format_err!("No email found in entry"))?,
         )
         .context("Failed to focus window by window_id")?,
 
@@ -139,7 +143,7 @@ fn main_menu(
                 .context("Failed to get window_id by user selection")?,
             &entry
                 .get_value_with_key("username")
-                .ok_or(format_err!("No username found in entry"))?,
+                .ok_or_else(|| format_err!("No username found in entry"))?,
         )
         .context("Failed to focus window by window_id")?,
 
@@ -148,7 +152,7 @@ fn main_menu(
                 .context("Failed to get window_id by user selection")?,
             &entry
                 .get_password()
-                .ok_or(format_err!("No password found in entry"))?,
+                .ok_or_else(|| format_err!("No password found in entry"))?,
         )
         .context("Failed to focus window by window_id")?,
 
@@ -158,7 +162,7 @@ fn main_menu(
             &otp::calculate_otp(
                 &entry
                     .get_value_with_key("otp_secret")
-                    .ok_or(format_err!("No otp_secret found in entry"))?,
+                    .ok_or_else(|| format_err!("No otp_secret found in entry"))?,
             )
             .context("Failed to calculate otp from secret")?,
         )
@@ -170,10 +174,10 @@ fn main_menu(
             let username_or_email = entry
                 .get_value_with_key("username")
                 .or_else(|| entry.get_value_with_key("email"))
-                .ok_or(format_err!("No username nor email found in entry"))?;
+                .ok_or_else(|| format_err!("No username nor email found in entry"))?;
             let password = entry
                 .get_password()
-                .ok_or(format_err!("No password found in entry"))?;
+                .ok_or_else(|| format_err!("No password found in entry"))?;
 
             xorg::type_string_in_window(&window_id, &username_or_email)
                 .context("Failed to type username or email in window")?;
@@ -186,26 +190,26 @@ fn main_menu(
         MainMenuCommand::CopyEmail => xorg::copy_to_clipboard(
             &entry
                 .get_value_with_key("email")
-                .ok_or(format_err!("No email found in entry"))?,
+                .ok_or_else(|| format_err!("No email found in entry"))?,
         )?,
 
         MainMenuCommand::CopyUsername => xorg::copy_to_clipboard(
             &entry
                 .get_value_with_key("username")
-                .ok_or(format_err!("No username found in entry"))?,
+                .ok_or_else(|| format_err!("No username found in entry"))?,
         )?,
 
         MainMenuCommand::CopyPassword => xorg::copy_to_clipboard(
             &entry
                 .get_password()
-                .ok_or(format_err!("No password found in entry"))?,
+                .ok_or_else(|| format_err!("No password found in entry"))?,
         )?,
 
         MainMenuCommand::CopyOTP => xorg::copy_to_clipboard(
             &otp::calculate_otp(
                 &entry
                     .get_value_with_key("otp_secret")
-                    .ok_or(format_err!("No otp_secret found in entry"))?,
+                    .ok_or_else(|| format_err!("No otp_secret found in entry"))?,
             )
             .context("Failed to calculate otp from secret")?,
         )?,
@@ -215,13 +219,13 @@ fn main_menu(
                 config
                     .browser
                     .clone()
-                    .ok_or(format_err!("No browser found, please set $BROWSER"))?
+                    .ok_or_else(|| format_err!("No browser found, please set $BROWSER"))?
                     .to_owned(),
             )
             .arg(
                 &entry
                     .get_value_with_key("url")
-                    .ok_or(format_err!("No url found in entry"))?,
+                    .ok_or_else(|| format_err!("No url found in entry"))?,
             )
             .spawn()
             .context("Failed to spawn browser")?;
@@ -287,7 +291,7 @@ fn entry_menu(
     };
     let command = selected
         .command
-        .ok_or(format_err!("Rofi command code not found"))?;
+        .ok_or_else(|| format_err!("Rofi command code not found"))?;
 
     match command {
         EntryMenuCommand::Edit => {
@@ -310,9 +314,10 @@ fn entry_menu(
             };
 
             let mut new_entry = entry.clone();
-            let new_index = match new_entry.fields.len() > 0 {
-                true => *entry_menu_selected_index + 1,
-                false => *entry_menu_selected_index,
+            let new_index = if new_entry.fields.is_empty() {
+                *entry_menu_selected_index
+            } else {
+                *entry_menu_selected_index + 1
             };
             new_entry.insert_new_field(new_index, &new_value);
             new_entry.insert_into_store()?;

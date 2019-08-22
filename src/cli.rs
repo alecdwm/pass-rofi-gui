@@ -26,6 +26,7 @@ struct CliConfig {
     password_store_dir: Option<String>,
 }
 
+#[derive(Debug)]
 pub struct Config {
     pub browser: Option<String>,
     pub no_notify: bool,

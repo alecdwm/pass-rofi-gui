@@ -23,7 +23,7 @@ fn print_error_chain(error: Error, no_notify: bool) {
         .collect::<Vec<_>>()
         .join(": ");
 
-    if let Ok(_) = env::var("RUST_BACKTRACE") {
+    if env::var("RUST_BACKTRACE").is_ok() {
         eprintln!("{}\n\n{}", error.backtrace(), chain);
     } else {
         eprintln!("{}", chain);

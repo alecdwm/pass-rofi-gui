@@ -7,7 +7,7 @@ use std::process;
 use std::str::FromStr;
 
 pub fn select_item<TValue: fmt::Display + Clone, TCommand: fmt::Display + Clone>(
-    items: &Vec<TValue>,
+    items: &[TValue],
     matching: &str,
     selected_index: usize,
     custom_keybindings: RofiCustomKeybindings<TCommand>,
@@ -26,7 +26,7 @@ impl<TValue: fmt::Display + Clone, TCommand: fmt::Display + Clone>
     RofiSelectedItem<TValue, TCommand>
 {
     pub fn from_items(
-        items: &Vec<TValue>,
+        items: &[TValue],
         matching: &str,
         selected_index: usize,
         custom_keybindings: RofiCustomKeybindings<TCommand>,
@@ -53,7 +53,7 @@ impl<TValue: fmt::Display + Clone, TCommand: fmt::Display + Clone>
         let stdin = child
             .stdin
             .as_mut()
-            .ok_or(format_err!("Failed to open rofi stdin"))?;
+            .ok_or_else(|| format_err!("Failed to open rofi stdin"))?;
 
         for item in items {
             stdin
@@ -77,9 +77,9 @@ impl<TValue: fmt::Display + Clone, TCommand: fmt::Display + Clone>
             Some(item_index) => Some(
                 items
                     .get(item_index)
-                    .ok_or(format_err!(
-                        "Failed to index item using index value from rofi output"
-                    ))?
+                    .ok_or_else(|| {
+                        format_err!("Failed to index item using index value from rofi output")
+                    })?
                     .clone(),
             ),
             None => None,
