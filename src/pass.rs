@@ -1,7 +1,7 @@
 use crate::rofi;
-use failure::format_err;
-use failure::Error;
-use failure::ResultExt;
+use anyhow::anyhow;
+use anyhow::Context;
+use anyhow::Error;
 use std::env;
 use std::fmt;
 use std::fs;
@@ -63,7 +63,7 @@ impl PassEntry {
         let field = self
             .fields
             .get_mut(field_index)
-            .ok_or_else(|| format_err!("No field found at given index"))?;
+            .ok_or_else(|| anyhow!("No field found at given index"))?;
 
         let value = match field {
             PassEntryField::Password(value) => value,
@@ -80,9 +80,9 @@ impl PassEntry {
         if let PassEntryField::Password(_) = self
             .fields
             .get(index)
-            .ok_or_else(|| format_err!("No field found at given index"))?
+            .ok_or_else(|| anyhow!("No field found at given index"))?
         {
-            return Err(format_err!("Cannot delete password field"));
+            return Err(anyhow!("Cannot delete password field"));
         }
 
         self.fields.remove(index);
@@ -110,7 +110,7 @@ impl PassEntry {
         let stdin = child
             .stdin
             .as_mut()
-            .ok_or_else(|| format_err!("Failed to open pass stdin"))?;
+            .ok_or_else(|| anyhow!("Failed to open pass stdin"))?;
 
         stdin
             .write_all(entry.as_bytes())
@@ -122,11 +122,8 @@ impl PassEntry {
 
         match output.status.code() {
             Some(0) => Ok(()),
-            None => Err(format_err!("Pass exited with no status code")),
-            Some(val) => Err(format_err!(
-                "Pass existed with non-zero status code {}",
-                val
-            )),
+            None => Err(anyhow!("Pass exited with no status code")),
+            Some(val) => Err(anyhow!("Pass existed with non-zero status code {}", val)),
         }
     }
 
@@ -141,14 +138,14 @@ impl PassEntry {
         match exit_code {
             None => panic!("pass exit code was None not 0"),
             Some(0) => Ok(Self::from_output(entry_path, output.stdout)?),
-            Some(2) => Err(format_err!("Pinentry required")),
+            Some(2) => Err(anyhow!("Pinentry required")),
             Some(val) => panic!(format!("pass exit code was {} not 0", val)),
         }
     }
 
     fn from_path_with_pinentry(entry_path: &str) -> Result<Self, Error> {
-        let passphrase = rofi::get_passphrase()?
-            .ok_or_else(|| format_err!("Failed to get passphrase via rofi"))?;
+        let passphrase =
+            rofi::get_passphrase()?.ok_or_else(|| anyhow!("Failed to get passphrase via rofi"))?;
 
         let mut child = process::Command::new("pass")
             .stdin(process::Stdio::piped())
@@ -164,7 +161,7 @@ impl PassEntry {
         let stdin = child
             .stdin
             .as_mut()
-            .ok_or_else(|| format_err!("Failed to open pass stdin"))?;
+            .ok_or_else(|| anyhow!("Failed to open pass stdin"))?;
         stdin
             .write_all(format!("{}\n", passphrase).as_bytes())
             .context("Failed to write to pass stdin")?;
@@ -177,7 +174,7 @@ impl PassEntry {
         match exit_code {
             None => panic!("pass exit code was None not 0"),
             Some(0) => Ok(Self::from_output(entry_path, output.stdout)?),
-            Some(2) => Err(format_err!("Invalid passphrase provided")),
+            Some(2) => Err(anyhow!("Invalid passphrase provided")),
             Some(val) => panic!(format!("pass exit code was {} not 0", val)),
         }
     }
@@ -249,7 +246,7 @@ impl PassStoreDirectory {
             Some(val) => Ok(val.to_owned()),
             None => match env::var("HOME") {
                 Ok(val) => Ok(format!("{}/.password-store", val)),
-                Err(_) => Err(format_err!(
+                Err(_) => Err(anyhow!(
                     "Can't find password store! Please set $PASSWORD_STORE_DIR or $HOME"
                 )),
             },
@@ -268,7 +265,7 @@ impl PassStoreDirectory {
         mut pass_entries: Vec<String>,
     ) -> Result<Vec<String>, Error> {
         for entry in
-            fs::read_dir(directory).with_context(|_| format!("Failed to read {:?}", directory))?
+            fs::read_dir(directory).with_context(|| format!("Failed to read {:?}", directory))?
         {
             let entry = entry?;
             let path = entry.path();
@@ -277,10 +274,10 @@ impl PassStoreDirectory {
             if path
                 .components()
                 .last()
-                .ok_or_else(|| format_err!("Failed to read path"))?
+                .ok_or_else(|| anyhow!("Failed to read path"))?
                 .as_os_str()
                 .to_str()
-                .ok_or_else(|| format_err!("Non-unicode characters in path"))?
+                .ok_or_else(|| anyhow!("Non-unicode characters in path"))?
                 .to_owned()
                 .starts_with('.')
             {
@@ -301,7 +298,7 @@ impl PassStoreDirectory {
                     component
                         .as_os_str()
                         .to_str()
-                        .ok_or_else(|| format_err!("Failed to read path"))
+                        .ok_or_else(|| anyhow!("Failed to read path"))
                 })
                 .collect::<Result<Vec<&str>, _>>()?
                 .join("/");

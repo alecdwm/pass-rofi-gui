@@ -1,6 +1,6 @@
-use failure::format_err;
-use failure::Error;
-use failure::ResultExt;
+use anyhow::anyhow;
+use anyhow::Context;
+use anyhow::Error;
 use std::fmt;
 use std::io::Write;
 use std::process;
@@ -53,7 +53,7 @@ impl<TValue: fmt::Display + Clone, TCommand: fmt::Display + Clone>
         let stdin = child
             .stdin
             .as_mut()
-            .ok_or_else(|| format_err!("Failed to open rofi stdin"))?;
+            .ok_or_else(|| anyhow!("Failed to open rofi stdin"))?;
 
         for item in items {
             stdin
@@ -78,7 +78,7 @@ impl<TValue: fmt::Display + Clone, TCommand: fmt::Display + Clone>
                 items
                     .get(item_index)
                     .ok_or_else(|| {
-                        format_err!("Failed to index item using index value from rofi output")
+                        anyhow!("Failed to index item using index value from rofi output")
                     })?
                     .clone(),
             ),
@@ -111,9 +111,7 @@ impl<TCommand: fmt::Display + Clone> RofiCustomKeybindings<TCommand> {
 
     pub fn add(mut self, keybind: &str, command: TCommand) -> Result<Self, Error> {
         if self.keybinds.len() >= 19 {
-            return Err(format_err!(
-                "Max number of custom rofi keybindings exceeded"
-            ));
+            return Err(anyhow!("Max number of custom rofi keybindings exceeded"));
         }
         self.keybinds.push(Keybind {
             binding: keybind.to_owned().clone(),
@@ -208,6 +206,7 @@ pub fn get_passphrase() -> Result<Option<String>, Error> {
     Ok(passphrase)
 }
 
+// for passwords; custom bindings to allow for generating password?
 pub fn get_new_field_value(prompt: &str, old_value: &str) -> Result<Option<String>, Error> {
     let new_value = match String::from_utf8(
         process::Command::new("rofi")

@@ -1,5 +1,5 @@
 use crate::pass;
-use failure::Error;
+use anyhow::Error;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]

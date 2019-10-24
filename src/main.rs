@@ -1,7 +1,6 @@
-use failure::Error;
+use anyhow::Error;
 use notify_rust::Notification;
 use pass_rofi_gui::cli;
-use std::env;
 use std::process;
 
 fn main() {
@@ -18,16 +17,12 @@ fn main() {
 
 fn print_error_chain(error: Error, no_notify: bool) {
     let chain = error
-        .iter_chain()
+        .chain()
         .map(|f| format!("{}", f))
         .collect::<Vec<_>>()
         .join(": ");
 
-    if env::var("RUST_BACKTRACE").is_ok() {
-        eprintln!("{}\n\n{}", error.backtrace(), chain);
-    } else {
-        eprintln!("{}", chain);
-    }
+    eprintln!("{}", chain);
 
     if !no_notify {
         Notification::new()

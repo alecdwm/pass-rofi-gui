@@ -3,9 +3,9 @@ use crate::otp;
 use crate::pass;
 use crate::rofi;
 use crate::xorg;
-use failure::format_err;
-use failure::Error;
-use failure::ResultExt;
+use anyhow::anyhow;
+use anyhow::Context;
+use anyhow::Error;
 use std::fmt;
 use std::process;
 
@@ -115,12 +115,10 @@ fn main_menu(
     )?;
 
     *main_menu_selected_index = selected.index.unwrap_or_default();
-    let entry_path = selected
-        .value
-        .ok_or_else(|| format_err!("No entry selected"))?;
+    let entry_path = selected.value.ok_or_else(|| anyhow!("No entry selected"))?;
     let command = selected
         .command
-        .ok_or_else(|| format_err!("Rofi command code not found"))?;
+        .ok_or_else(|| anyhow!("Rofi command code not found"))?;
 
     let entry = pass::PassEntry::from_path(&entry_path)?;
 
@@ -134,7 +132,7 @@ fn main_menu(
                 .context("Failed to get window_id by user selection")?,
             &entry
                 .get_value_with_key("email")
-                .ok_or_else(|| format_err!("No email found in entry"))?,
+                .ok_or_else(|| anyhow!("No email found in entry"))?,
         )
         .context("Failed to focus window by window_id")?,
 
@@ -143,7 +141,7 @@ fn main_menu(
                 .context("Failed to get window_id by user selection")?,
             &entry
                 .get_value_with_key("username")
-                .ok_or_else(|| format_err!("No username found in entry"))?,
+                .ok_or_else(|| anyhow!("No username found in entry"))?,
         )
         .context("Failed to focus window by window_id")?,
 
@@ -152,7 +150,7 @@ fn main_menu(
                 .context("Failed to get window_id by user selection")?,
             &entry
                 .get_password()
-                .ok_or_else(|| format_err!("No password found in entry"))?,
+                .ok_or_else(|| anyhow!("No password found in entry"))?,
         )
         .context("Failed to focus window by window_id")?,
 
@@ -162,7 +160,7 @@ fn main_menu(
             &otp::calculate_otp(
                 &entry
                     .get_value_with_key("otp_secret")
-                    .ok_or_else(|| format_err!("No otp_secret found in entry"))?,
+                    .ok_or_else(|| anyhow!("No otp_secret found in entry"))?,
             )
             .context("Failed to calculate otp from secret")?,
         )
@@ -174,10 +172,10 @@ fn main_menu(
             let username_or_email = entry
                 .get_value_with_key("username")
                 .or_else(|| entry.get_value_with_key("email"))
-                .ok_or_else(|| format_err!("No username nor email found in entry"))?;
+                .ok_or_else(|| anyhow!("No username nor email found in entry"))?;
             let password = entry
                 .get_password()
-                .ok_or_else(|| format_err!("No password found in entry"))?;
+                .ok_or_else(|| anyhow!("No password found in entry"))?;
 
             xorg::type_string_in_window(&window_id, &username_or_email)
                 .context("Failed to type username or email in window")?;
@@ -190,26 +188,26 @@ fn main_menu(
         MainMenuCommand::CopyEmail => xorg::copy_to_clipboard(
             &entry
                 .get_value_with_key("email")
-                .ok_or_else(|| format_err!("No email found in entry"))?,
+                .ok_or_else(|| anyhow!("No email found in entry"))?,
         )?,
 
         MainMenuCommand::CopyUsername => xorg::copy_to_clipboard(
             &entry
                 .get_value_with_key("username")
-                .ok_or_else(|| format_err!("No username found in entry"))?,
+                .ok_or_else(|| anyhow!("No username found in entry"))?,
         )?,
 
         MainMenuCommand::CopyPassword => xorg::copy_to_clipboard(
             &entry
                 .get_password()
-                .ok_or_else(|| format_err!("No password found in entry"))?,
+                .ok_or_else(|| anyhow!("No password found in entry"))?,
         )?,
 
         MainMenuCommand::CopyOTP => xorg::copy_to_clipboard(
             &otp::calculate_otp(
                 &entry
                     .get_value_with_key("otp_secret")
-                    .ok_or_else(|| format_err!("No otp_secret found in entry"))?,
+                    .ok_or_else(|| anyhow!("No otp_secret found in entry"))?,
             )
             .context("Failed to calculate otp from secret")?,
         )?,
@@ -219,13 +217,13 @@ fn main_menu(
                 config
                     .browser
                     .clone()
-                    .ok_or_else(|| format_err!("No browser found, please set $BROWSER"))?
+                    .ok_or_else(|| anyhow!("No browser found, please set $BROWSER"))?
                     .to_owned(),
             )
             .arg(
                 &entry
                     .get_value_with_key("url")
-                    .ok_or_else(|| format_err!("No url found in entry"))?,
+                    .ok_or_else(|| anyhow!("No url found in entry"))?,
             )
             .spawn()
             .context("Failed to spawn browser")?;
@@ -291,7 +289,7 @@ fn entry_menu(
     };
     let command = selected
         .command
-        .ok_or_else(|| format_err!("Rofi command code not found"))?;
+        .ok_or_else(|| anyhow!("Rofi command code not found"))?;
 
     match command {
         EntryMenuCommand::Edit => {

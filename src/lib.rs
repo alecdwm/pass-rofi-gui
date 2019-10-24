@@ -5,7 +5,7 @@ pub mod pass;
 pub mod rofi;
 pub mod xorg;
 
-use failure::Error;
+use anyhow::Error;
 
 pub fn run(config: &cli::Config) -> Result<(), Error> {
     let mut menu = menu::Menu::new();

@@ -6,7 +6,7 @@ authors = ["alecdwm <alec@owls.io>"]
 edition = "2018"
 
 [dependencies]
-failure = "0.1.5"
+anyhow = "1.0.17"
 libreauth = "0.11.0"
 notify-rust = "3.5.0"
 structopt = "0.2.14"

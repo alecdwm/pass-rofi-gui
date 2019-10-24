@@ -1,6 +1,6 @@
-use failure::format_err;
-use failure::Error;
-use failure::ResultExt;
+use anyhow::anyhow;
+use anyhow::Context;
+use anyhow::Error;
 use std::io::Write;
 use std::process;
 
@@ -16,7 +16,7 @@ pub fn get_window_id_by_user_select() -> Result<String, Error> {
     let line = output
         .lines()
         .find(|line| line.contains("Window id:"))
-        .ok_or_else(|| format_err!("Failed extracting window id"))?;
+        .ok_or_else(|| anyhow!("Failed extracting window id"))?;
 
     let fragment = line.trim_start_matches("xwininfo: Window id: ");
     let window_id = fragment
@@ -35,11 +35,11 @@ pub fn focus_window(window_id: &str) -> Result<(), Error> {
         .context("Failed to exec xdotool")?;
 
     if !status.success() {
-        return Err(format_err!(
+        return Err(anyhow!(
             "Failed to exec xdotool: exit code {}",
             status
                 .code()
-                .ok_or_else(|| format_err!("Failed to get exit code of xdotool"))?
+                .ok_or_else(|| anyhow!("Failed to get exit code of xdotool"))?
         ));
     };
     Ok(())
@@ -55,11 +55,11 @@ pub fn type_key_in_window(window_id: &str, key: &str) -> Result<(), Error> {
         .context("Failed to exec xdotool")?;
 
     if !status.success() {
-        return Err(format_err!(
+        return Err(anyhow!(
             "Failed to exec xdotool: exit code {}",
             status
                 .code()
-                .ok_or_else(|| format_err!("Failed to get exit code of xdotool"))?
+                .ok_or_else(|| anyhow!("Failed to get exit code of xdotool"))?
         ));
     };
     Ok(())
@@ -78,11 +78,11 @@ pub fn type_string_in_window(window_id: &str, typed_string: &str) -> Result<(), 
         .context("Failed to exec xdotool")?;
 
     if !status.success() {
-        return Err(format_err!(
+        return Err(anyhow!(
             "Failed to exec xdotool: exit code {}",
             status
                 .code()
-                .ok_or_else(|| format_err!("Failed to get exit code of xdotool"))?
+                .ok_or_else(|| anyhow!("Failed to get exit code of xdotool"))?
         ));
     };
     Ok(())
@@ -97,7 +97,7 @@ pub fn copy_to_clipboard(data: &str) -> Result<(), Error> {
     let stdin = xclip
         .stdin
         .as_mut()
-        .ok_or_else(|| format_err!("Failed to open xclip stdin"))?;
+        .ok_or_else(|| anyhow!("Failed to open xclip stdin"))?;
     stdin
         .write_all(data.as_bytes())
         .context("Failed to write to xclip stdin")?;
