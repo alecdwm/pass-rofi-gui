@@ -17,7 +17,7 @@ struct CliConfig {
     #[structopt(
         long,
         default_value = "normal",
-        raw(possible_values = r#"&["normal", "regex", "glob", "fuzzy"]"#)
+        possible_values = &["normal", "regex", "glob", "fuzzy"]
     )]
     rofi_matching: String,
 
