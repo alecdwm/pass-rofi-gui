@@ -1,15 +1,14 @@
-use anyhow::anyhow;
+use anyhow::Context;
 use anyhow::Error;
-use libotp::totp;
+use miniotp::TOTP;
 
 const OTP_DIGITS: u32 = 6;
-const OTP_TIME_STEP: u64 = 30;
-const OTP_TIME_START: u64 = 0;
 
 pub fn calculate_otp(secret: &str) -> Result<String, Error> {
-    totp(secret, OTP_DIGITS, OTP_TIME_STEP, OTP_TIME_START)
-        .map(|otp| format_otp(otp))
-        .ok_or_else(|| anyhow!("Failed to calculate OTP"))
+    TOTP::from_base32(secret)
+        .map(|totp| totp.generate_now())
+        .map(format_otp)
+        .context("Failed to calculate OTP")
 }
 
 fn format_otp(otp: u32) -> String {

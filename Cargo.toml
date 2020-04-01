@@ -7,6 +7,6 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.27"
-libotp = "0.1.4"
+miniotp = "1.1.0"
 notify-rust = "3.6.3"
 structopt = "0.3.11"
