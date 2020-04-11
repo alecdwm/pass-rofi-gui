@@ -1,50 +1,48 @@
+<div align="center">
+
 # pass-rofi-gui
-A password manager GUI that integrates [pass](https://passwordstore.org) with [rofi](https://github.com/davatorium/rofi).
+A [rofi](https://github.com/davatorium/rofi) GUI for the [standard unix password manager](https://passwordstore.org).
+
+</div>
 
 ## Features
-- pass entry browser with optional regex/glob/fuzzy matching for search filter
-- support for the pass entry metadata schema detailed at [password-store.org#organization](https://passwordstore.org#organization), i.e.
-```
-Yw|ZSNH!}z"6{ym9pI
-url: *.amazon.com/*
-username: AmazonianChicken@example.com
-otp_secret: JRBZMC21V48KYCQYLS0LDE8GX
-phone support pin #: 84719
-```
-- autofill and copy to clipboard shortcuts on the entry browser for the following fields:
-  - email
-  - username
-  - password
-  - otp
-- entry browser shortcut to autofill entry username (if exists, otherwise email), followed by tab key and password
-- entry browser shortcut to open entry url field in `$BROWSER`
-- detailed pass entry view which provides:
-  - autofill and copy to clipboard shortcuts for any field
-  - shortcuts to create, edit and delete entry fields
-- rofi GUI pinentry integration
-- something missing? drop an issue or pull request!
 
-## Screenshots
-<p align="center">
-<img alt="main menu" src="https://github.com/alecdwm/pass-rofi-gui/blob/master/res/main-menu.png" /><br />
-<b>main menu</b>
-</p>
-<p align="center">
-<img alt="search filter" src="https://github.com/alecdwm/pass-rofi-gui/blob/master/res/search-filter.png" /><br />
-<b>search / filter</b>
-</p>
-<p align="center">
-<img alt="pinentry integration" src="https://github.com/alecdwm/pass-rofi-gui/blob/master/res/pinentry-integration.png" /><br />
-<b>pinentry integration</b>
-</p>
-<p align="center">
-<img alt="entry menu" src="https://github.com/alecdwm/pass-rofi-gui/blob/master/res/entry-menu.png" /><br />
-<b>entry menu</b>
-</p>
-<p align="center">
-<img alt="edit entry field" src="https://github.com/alecdwm/pass-rofi-gui/blob/master/res/edit-entry-field.png" /><br />
-<b>edit entry field</b>
-</p>
+- GUI password store browser.
+- Password search via normal, regex, glob and fuzzy filters.
+- Convenient autofill/copy to clipboard commands for common fields.
+
+<div align="center">
+
+![a screenshot of the main menu](res/main-menu.png)<br />
+
+</div>
+
+- GPG pinentry prompt via rofi.
+
+<div align="center">
+
+![a screenshot of the gpg pinentry integration](res/pinentry-integration.png)<br />
+
+</div>
+
+- GUI password entry viewer.
+- Support for arbitrary UTF-8 data in password entry files.
+
+<div align="center">
+
+![a screenshot of the password entry viewer](res/entry-menu.png)<br />
+
+</div>
+
+- GUI prompt for editing fields.
+
+<div align="center">
+
+![a screenshot of the password entry field editor](res/edit-entry-field.png)<br />
+
+</div>
+
+- Actively used and maintained. Feel free to [open an issue](https://github.com/alecdwm/pass-rofi-gui/issues/new) or [get in touch](https://owls.io) for any questions / feature requests.
 
 ## Installation
 #### Dependencies
@@ -78,7 +76,7 @@ phone support pin #: 84719
 $ pass-rofi-gui --help
 pass-rofi-gui 1.0.0
 alecdwm <alec@owls.io>
-A password manager GUI that integrates pass with rofi
+A rofi GUI for the standard unix password manager.
 
 USAGE:
     pass-rofi-gui [FLAGS] [OPTIONS]
