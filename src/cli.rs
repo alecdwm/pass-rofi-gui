@@ -3,7 +3,7 @@ use anyhow::Error;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[structopt(author, about, rename_all = "kebab-case")]
 struct CliConfig {
     /// Sets the browser for opening URLs
     #[structopt(long, env = "BROWSER")]
