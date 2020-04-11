@@ -74,7 +74,7 @@ A [rofi](https://github.com/davatorium/rofi) GUI for the [standard unix password
 ## Usage
 ```shell
 $ pass-rofi-gui --help
-pass-rofi-gui 1.0.0
+pass-rofi-gui 1.1.0
 alecdwm <alec@owls.io>
 A rofi GUI for the standard unix password manager.
 
