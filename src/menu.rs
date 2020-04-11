@@ -96,15 +96,15 @@ fn main_menu(
     let pass_store_dir = pass::PassStoreDirectory::new(&config.pass_store_path)?;
 
     let keybinds = rofi::RofiCustomKeybindings::new(MainMenuCommand::Select)
-        .add("alt+1", MainMenuCommand::AutofillEmail)?
-        .add("alt+e", MainMenuCommand::CopyEmail)?
-        .add("alt+2", MainMenuCommand::AutofillUsername)?
-        .add("alt+u", MainMenuCommand::CopyUsername)?
-        .add("alt+3", MainMenuCommand::AutofillPassword)?
-        .add("alt+p", MainMenuCommand::CopyPassword)?
-        .add("alt+4", MainMenuCommand::AutofillOTP)?
-        .add("alt+o", MainMenuCommand::CopyOTP)?
-        .add("alt+5", MainMenuCommand::AutofillCustom)?
+        .add("alt+e", MainMenuCommand::AutofillEmail)?
+        .add("alt+E", MainMenuCommand::CopyEmail)?
+        .add("alt+u", MainMenuCommand::AutofillUsername)?
+        .add("alt+U", MainMenuCommand::CopyUsername)?
+        .add("alt+p", MainMenuCommand::AutofillPassword)?
+        .add("alt+P", MainMenuCommand::CopyPassword)?
+        .add("alt+o", MainMenuCommand::AutofillOTP)?
+        .add("alt+O", MainMenuCommand::CopyOTP)?
+        .add("alt+a", MainMenuCommand::AutofillCustom)?
         .add("alt+w", MainMenuCommand::OpenURLInBrowser)?;
 
     let selected = rofi::select_item(
@@ -262,7 +262,7 @@ fn entry_menu(
     let keybinds = rofi::RofiCustomKeybindings::new(EntryMenuCommand::Edit)
         .add("alt+n", EntryMenuCommand::New)?
         .add("alt+d", EntryMenuCommand::Delete)?
-        .add("alt+1", EntryMenuCommand::Autofill)?
+        .add("alt+a", EntryMenuCommand::Autofill)?
         .add("alt+c", EntryMenuCommand::Copy)?;
 
     let selected = rofi::select_item(
